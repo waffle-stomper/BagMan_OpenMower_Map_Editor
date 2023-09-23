@@ -16,16 +16,13 @@ Example usage (see 'python3 bagman.py --help' for command line options):
 Features:
     - Automatic map backup
     - Set human-readable name for mowing and navigation areas (note that this is only currently visible in bagman)
+    - Selectively disable mowing and navigation areas
     - Remove individual areas
     - Change the order of the areas (this sets the order in which areas are mowed)
 
-Changelog:
-    Version 0.0.1 - 2023-08-16 - Initial release
-    Version 0.0.2 - 2023-08-18 - Add '--cycle-mowing-areas' mode
-
 TODO:
-    - Figure out if there's a way to selectively disable areas. Changing the topic doesn't work. Changing the package
-      for the message does work, but any disabled areas are removed if you add a new area in Open Mower.
+    - Figure out if there's a better way to selectively disable areas. Changing the topic doesn't work. Changing the
+      package for the message does work, but any disabled areas are removed if you add a new area in Open Mower.
       Ideas are welcome.
     - Determine if there's a maximum length for area names (and enforce the limit if so)
 
@@ -55,6 +52,8 @@ class BagMan:
     TOPIC_MOWING_AREAS = "mowing_areas"
     TOPIC_NAVIGATION_AREAS = "navigation_areas"
     ALL_TOPICS_THAT_CAN_BE_NAMED = [TOPIC_MOWING_AREAS, TOPIC_NAVIGATION_AREAS]
+    ALL_TOPICS_THAT_CAN_BE_DISABLED = [TOPIC_MOWING_AREAS, TOPIC_NAVIGATION_AREAS]
+    PREFIX_TOPIC_DISABLED = "disabled_"
 
     def __init__(self, console_log_level: int = logging.INFO, file_log_level=logging.DEBUG):
         self.log: logging.Logger = logging.getLogger("bagman")
@@ -343,10 +342,14 @@ class BagMan:
             self.log.debug(f"Item {item_idx} selected")
             while True:
                 selected_item: rosbag.bag.BagMessage = items[item_idx]
+                is_disabled: bool = selected_item.topic.startswith(self.PREFIX_TOPIC_DISABLED)
                 is_first: bool = item_idx == 0
                 is_last: bool = item_idx == len(items) - 1
                 is_nameable: bool = selected_item.topic in self.ALL_TOPICS_THAT_CAN_BE_NAMED
+                is_disable_allowed: bool = selected_item.topic in self.ALL_TOPICS_THAT_CAN_BE_DISABLED
                 choice_set_name = "name"
+                choice_disable = "disable"
+                choice_enable = "enable"
                 choice_remove = "remove"
                 choice_move_to_first_pos = "first"
                 choice_move_to_last_pos = "last"
@@ -361,11 +364,13 @@ class BagMan:
                             # Note that not all choices will be available for all items. We set the value to a
                             # blank string for any choices we want to filter out
                             choice_set_name: "Set name" if is_nameable else "",
+                            choice_enable: "Enable" if is_disabled else "",
+                            choice_disable: "Disable" if not is_disabled and is_disable_allowed else "",
+                            choice_remove: "Remove from bag",
                             choice_move_to_first_pos: "Move to first position" if not is_first else "",
                             choice_move_to_last_pos: "Move to last position" if not is_last else "",
                             choice_move_up: "Move up one position" if not is_first else "",
                             choice_move_down: "Move down one position" if not is_last else "",
-                            choice_remove: "Remove from bag",
                             choice_back: "Go back to the main menu",
                         }.items() if v
                     }
@@ -385,6 +390,52 @@ class BagMan:
                         self.__dirty = True
                     else:
                         self.log.debug("User chose to go back to the item menu")
+                elif item_menu_choice == choice_disable:
+                    self.log.info("Disabling item...")
+                    try:
+                        # Note that we add the disabled prefix to the package name so that OpenMower will ignore the
+                        # area, then we add it to the topic so it's visible to bagman users
+                        items[item_idx].message._spec.package = "".join([
+                            self.PREFIX_TOPIC_DISABLED,
+                            items[item_idx].message._spec.package
+                        ])
+                        items[item_idx].message._spec.full_name = "".join([
+                            self.PREFIX_TOPIC_DISABLED,
+                            items[item_idx].message._spec.full_name,
+                        ])
+                        # Note that we can't modify the topic directly, so we have to create a new copy of the item
+                        items[item_idx] = rosbag.bag.BagMessage(
+                            topic=f"{self.PREFIX_TOPIC_DISABLED}{selected_item.topic}",
+                            message=items[item_idx].message,
+                            timestamp=items[item_idx].timestamp
+                        )
+                    except Exception:
+                        self.log.exception("Couldn't disable area!")
+                        time.sleep(1)
+                        continue
+                    self.__dirty = True
+                elif item_menu_choice == choice_enable:
+                    self.log.info("Enabling item...")
+                    try:
+                        items[item_idx].message._spec.package = items[item_idx].message._spec.package.removeprefix(
+                            self.PREFIX_TOPIC_DISABLED
+                        )
+                        items[item_idx].message._spec.package = items[item_idx].message._spec.full_name.removeprefix(
+                            self.PREFIX_TOPIC_DISABLED
+                        )
+                        # Note that we can't modify the topic directly, so we have to create a new copy of the item
+                        items[item_idx] = rosbag.bag.BagMessage(
+                            topic=items[item_idx].topic.removeprefix(self.PREFIX_TOPIC_DISABLED),
+                            message=items[item_idx].message,
+                            timestamp=items[item_idx].timestamp
+                        )
+                    except Exception:
+                        self.log.exception("Couldn't enable area!")
+                        time.sleep(1)
+                        continue
+                    self.log.warning("Disabled items will be lost if you alter the map with OpenMower!")
+                    time.sleep(0.5)
+                    self.__dirty = True
                 elif item_menu_choice == choice_remove:
                     self.log.info("Removing item...")
                     items.pop(item_idx)
