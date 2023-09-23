@@ -333,20 +333,24 @@ class BagMan:
             elif base_menu_choice == choice_quit:
                 self.log.info("User chose to quit")
                 if self.__dirty:
-                    quit_menu_choice: str = self._present_menu(
-                        title="You have unsaved changes!",
-                        choices={
-                            choice_save: f"Save to {self.__output_file_path}",
-                            choice_quit: "Quit without saving",
-                        }
-                    )
-                    if quit_menu_choice == choice_save:
-                        self.log.info("User chose to save")
-                        self.save_bag(file_path=self.__output_file_path, items=items)
-                    elif quit_menu_choice == choice_quit:
-                        self.log.warning("User chose to discard changes")
+                    if self.__overwrite_without_confirmation:
+                        self.log.info("Auto-saving changes")
+                        self.save_bag(file_path=self.__output_file_path, items=items, force=True)
                     else:
-                        continue
+                        quit_menu_choice: str = self._present_menu(
+                            title="You have unsaved changes!",
+                            choices={
+                                choice_save: f"Save to {self.__output_file_path}",
+                                choice_quit: "Quit without saving",
+                            }
+                        )
+                        if quit_menu_choice == choice_save:
+                            self.log.info("User chose to save")
+                            self.save_bag(file_path=self.__output_file_path, items=items)
+                        elif quit_menu_choice == choice_quit:
+                            self.log.warning("User chose to discard changes")
+                        else:
+                            continue
                 return
 
             # Submenu for operating on individual items
