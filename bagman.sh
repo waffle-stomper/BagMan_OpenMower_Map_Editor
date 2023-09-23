@@ -12,7 +12,7 @@ sudo chown openmower:openmower map.bag
 BEFORE_HASH=$(sha256sum map.bag)
 echo "Hash before BagMan: $BEFORE_HASH"
 
-.venv/bin/python3 bagman.py --input map.bag --output map.bag
+.venv/bin/python3 bagman.py --input map.bag --output map.bag --overwrite-without-prompting
 
 AFTER_HASH=$(sha256sum map.bag)
 echo "Hash after BagMan: $AFTER_HASH"
