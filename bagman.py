@@ -83,6 +83,7 @@ class BagMan:
         self.__output_file_path: Optional[str] = None
         self.__dirty: bool = False
         self.__cycle_mowing_areas_then_quit: bool = False
+        self.__overwrite_without_confirmation: bool = False
 
     def _present_menu(
             self,
@@ -195,6 +196,9 @@ class BagMan:
         """
         self.log.info(f"Saving to {file_path}")
 
+        if self.__overwrite_without_confirmation:
+            force = True
+
         if not force:
             while True:
                 if os.path.exists(file_path):
@@ -251,14 +255,22 @@ class BagMan:
             action="store_true",
             help=" ".join([
                 "Move the first mowing area to the last position and then quit.",
-                "WARNING: This mode will overwrite the output file without confirmation!"  # TODO: Maybe we just have a command line arg that allows overwriting?
+                "WARNING: This mode will overwrite the output file without confirmation!"
             ])
+        )
+        parser.add_argument(
+            "--overwrite-without-prompting",
+            "--clobber",
+            required=False,
+            action="store_true",
+            help="Skip the normal prompt that asks if you want to over-write an existing file."
         )
 
         args = parser.parse_args()
         self.__input_file_path: str = os.path.abspath(args.input)
         self.__output_file_path: str = os.path.abspath(args.output)
         self.__cycle_mowing_areas_then_quit: bool = args.cycle_mowing_areas
+        self.__overwrite_without_confirmation: bool = args.overwrite_without_prompting
 
     @classmethod
     def _clone_timestamp(cls, timestamp: rospy.Time) -> rospy.Time:
