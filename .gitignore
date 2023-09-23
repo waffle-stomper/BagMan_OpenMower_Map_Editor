@@ -1,0 +1,6 @@
+.github/
+.idea/
+backups/
+logs/
+
+*.bag
