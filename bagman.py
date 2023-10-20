@@ -284,16 +284,10 @@ class BagMan:
             cls,
             item: rosbag.bag.BagMessage,
             pad_topic_col_to_width: int = 0,
-            timestamp_col_padding: int = 0,
     ) -> str:
-        converted_timestamp: datetime.datetime = datetime.datetime.fromtimestamp(
-            item.timestamp.secs + item.timestamp.nsecs / 1_000_000_000
-        )
         parts = [
             f"Topic: '{item.topic}'",
             " " * max(pad_topic_col_to_width - len(item.topic), 0) if pad_topic_col_to_width else "",
-            f"Timestamp: {converted_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')}",
-            " " * max(timestamp_col_padding, 0) if timestamp_col_padding else "",
             # Note that some messages don't contain the name attribute (e.g. docking_point)
             f"Name: '{item.message.name}'" if isinstance(getattr(item.message, "name", None), str) else "",
         ]
@@ -314,7 +308,6 @@ class BagMan:
                             str(idx): self._stringify_bag_item(
                                 item,
                                 pad_topic_col_to_width=max_topic_width + 1,
-                                timestamp_col_padding=3,
                             )
                             for idx, item in enumerate(items)
                         },
