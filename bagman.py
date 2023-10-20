@@ -59,12 +59,8 @@ class BagMan:
         self.log: logging.Logger = logging.getLogger("bagman")
         self.log.setLevel(logging.DEBUG)
         if not self.log.hasHandlers():
-            log_format = logging.Formatter(
-                fmt="%(asctime)s %(levelname)s in %(module)s: %(message)s",
-                datefmt="[%Y-%m-%d %H:%M:%S]"
-            )
             console_handler = logging.StreamHandler()
-            console_handler.setFormatter(log_format)
+            console_handler.setFormatter(logging.Formatter(fmt="%(levelname)s: %(message)s"))
             console_handler.setLevel(console_log_level)
             self.log.addHandler(console_handler)
             log_dir = os.path.abspath("logs")
@@ -73,7 +69,12 @@ class BagMan:
             if not os.path.exists(log_dir):
                 os.makedirs(log_dir)
             logfile = RotatingFileHandler(filename=new_log_path, backupCount=50)
-            logfile.setFormatter(log_format)
+            logfile.setFormatter(
+                logging.Formatter(
+                    fmt="%(asctime)s %(levelname)s in %(module)s: %(message)s",
+                    datefmt="[%Y-%m-%d %H:%M:%S]"
+                )
+            )
             logfile.setLevel(file_log_level)
             if existing_log_file:
                 logfile.doRollover()
