@@ -1,9 +1,18 @@
 #!/bin/bash
 
 # This shell script can be used to run bagman on the mower, and then automatically restart OpenMower if you change
-# something in the map file.
+# something in the map file, (you can use the -n switch to disable the restart if you'd like).
 # Note that you will need to create a virtual environment in the .venv directory and install the packages from
 # requirements.txt before bagman will run.
+
+# Handle the -n command line switch to disable automatic restart on change
+NO_RELOAD=false
+while getopts "n" opt;
+do
+    case "${opt}" in
+        n) NO_RELOAD=true;;
+    esac
+done
 
 echo "Copying map file to working dir..."
 sudo cp /root/ros_home/.ros/map.bag map.bag
@@ -22,6 +31,13 @@ then
   echo "No changes detected. No need to update the working map in ros_home with this one"
   exit 0
 fi
+
+if [[ $NO_RELOAD == true ]]
+then
+  echo "Changes detected, but the -n switch was used so we won't restart the openmower service"
+  exit 0
+fi
+
 
 echo "Map has changed!"
 
