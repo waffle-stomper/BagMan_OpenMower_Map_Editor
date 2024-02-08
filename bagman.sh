@@ -14,6 +14,13 @@ do
     esac
 done
 
+if [[ $NO_RELOAD == true ]]
+then
+  echo "The -n switch was used so we won't restart the openmower service if this operation changes the map"
+else
+  echo "WARNING: This will restart the openmower service if you make any changes to the map. Disable with -n"
+fi
+
 echo "Copying map file to working dir..."
 sudo cp /root/ros_home/.ros/map.bag map.bag
 sudo chown openmower:openmower map.bag
