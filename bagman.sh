@@ -18,7 +18,7 @@ if [[ $NO_RELOAD == true ]]
 then
   echo "The -n switch was used so we won't restart the openmower service if this operation changes the map"
 else
-  echo "WARNING: This will restart the openmower service if you make any changes to the map. Disable with -n"
+  echo "WARNING: THIS WILL RESTART THE OPENMOWER SERVICE IF YOU MAKE ANY CHANGES! Disable with -n"
 fi
 
 echo "Copying map file to working dir..."
@@ -39,21 +39,23 @@ then
   exit 0
 fi
 
-if [[ $NO_RELOAD == true ]]
-then
-  echo "Changes detected, but the -n switch was used so we won't restart the openmower service"
-  exit 0
-fi
-
-
 echo "Map has changed!"
 
-echo "Stopping OpenMower..."
-sudo service openmower stop
-sudo service openmower-debug stop
+if [[ $NO_RELOAD == false ]]
+then
+  echo "Stopping OpenMower..."
+  sudo service openmower stop
+  sudo service openmower-debug stop
+fi
 
 echo "Copying map file back to /root/ros_home/.ros"
 sudo cp map.bag /root/ros_home/.ros/map.bag
 sudo chown root:root /root/ros_home/.ros/map.bag
-echo "Starting OpenMower..."
-sudo service openmower start
+
+if [[ $NO_RELOAD == false ]]
+then
+  echo "Starting OpenMower..."
+  sudo service openmower start
+else
+  echo "-n flag specified. Not restarting openmower"
+fi
