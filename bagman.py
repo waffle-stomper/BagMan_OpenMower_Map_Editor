@@ -488,6 +488,9 @@ class BagMan:
                         items.append(area_to_move)
                     self.__dirty = True
 
+                # Go back to the main menu
+                break
+
     def run(self):
         self.parse_command_line_args()
         self.backup_bag(file_path=self.__input_file_path)
