@@ -185,7 +185,7 @@ class BagMan:
         if not os.path.exists(file_path):
             raise OSError(f"File '{file_path}' does not exist!")
 
-        with rosbag.Bag('map.bag', 'r') as bag:
+        with rosbag.Bag(file_path, 'r') as bag:
             return [m for m in bag.read_messages()]
 
     def save_bag(self, file_path: str, items: List[rosbag.bag.BagMessage], force: bool = False):
