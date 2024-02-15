@@ -83,7 +83,6 @@ class BagMan:
         self.__input_file_path: Optional[str] = None
         self.__output_file_path: Optional[str] = None
         self.__dirty: bool = False
-        self.__cycle_mowing_areas_then_quit: bool = False
         self.__overwrite_without_confirmation: bool = False
 
     def _present_menu(
@@ -251,15 +250,6 @@ class BagMan:
             help="Where to save the output. This can be the same as your input if you want"
         )
         parser.add_argument(
-            "--cycle-mowing-areas",
-            required=False,
-            action="store_true",
-            help=" ".join([
-                "Move the first mowing area to the last position and then quit.",
-                "WARNING: This mode will overwrite the output file without confirmation!"
-            ])
-        )
-        parser.add_argument(
             "--overwrite-without-prompting",
             "--clobber",
             required=False,
@@ -270,7 +260,6 @@ class BagMan:
         args = parser.parse_args()
         self.__input_file_path: str = os.path.abspath(args.input)
         self.__output_file_path: str = os.path.abspath(args.output)
-        self.__cycle_mowing_areas_then_quit: bool = args.cycle_mowing_areas
         self.__overwrite_without_confirmation: bool = args.overwrite_without_prompting
 
     @classmethod
@@ -365,6 +354,7 @@ class BagMan:
                 choice_move_to_last_pos = "last"
                 choice_move_up = "up"
                 choice_move_down = "down"
+                choice_cycle = "cycle"
                 choice_back = "back"
                 item_menu_choice: str = self._present_menu(
                     title=f"Please select an operation to perform on {self._stringify_bag_item(selected_item)}",
@@ -381,6 +371,7 @@ class BagMan:
                             choice_move_to_last_pos: "Move to last position" if not is_last else "",
                             choice_move_up: "Move up one position" if not is_first else "",
                             choice_move_down: "Move down one position" if not is_last else "",
+                            choice_cycle: "Cycle mowing areas until this one is first",
                             choice_back: "Go back to the main menu",
                         }.items() if v
                     }
@@ -489,36 +480,18 @@ class BagMan:
                     items.insert(item_idx + 1, selected_item)
                     item_idx += 1
                     self.__dirty = True
-
-    def cycle_mowing_areas(self, items: List[rosbag.bag.BagMessage]):
-        """
-        Moves the first mowing area to the last position
-        """
-        self.log.info("Moving the first mowing area to the last position...")
-        first_mowing_area_index: Optional[int] = None
-        for idx, item in enumerate(items):
-            if item.topic == self.TOPIC_MOWING_AREAS:
-                first_mowing_area_index = idx
-                break
-        if not isinstance(first_mowing_area_index, int):
-            self.log.error("No mowing areas found!")
-            return
-
-        self.log.debug(f"Found first mowing area at index {first_mowing_area_index}")
-        area_to_move = items.pop(first_mowing_area_index)
-        area_to_move.timestamp.secs = items[-1].timestamp.secs + 60
-        items.append(area_to_move)
+                elif item_menu_choice == choice_cycle:
+                    self.log.info("Cycling items until this one is first")
+                    for _ in range(item_idx):
+                        area_to_move = items.pop(0)
+                        area_to_move.timestamp.secs = items[-1].timestamp.secs + 60
+                        items.append(area_to_move)
+                    self.__dirty = True
 
     def run(self):
         self.parse_command_line_args()
         self.backup_bag(file_path=self.__input_file_path)
         bag_items: List[rosbag.bag.BagMessage] = self.read_bag(file_path=self.__input_file_path)
-
-        if self.__cycle_mowing_areas_then_quit:
-            self.cycle_mowing_areas(items=bag_items)
-            self.save_bag(file_path=self.__output_file_path, items=bag_items, force=True)
-            self.log.info("Quitting")
-            return
 
         self.interactive_menu(items=bag_items)
         self.log.info("Done!")
