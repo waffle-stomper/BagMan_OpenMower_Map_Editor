@@ -56,6 +56,8 @@ if [[ $NO_RELOAD == false ]]
 then
   echo "Starting OpenMower..."
   sudo service openmower start
+  sleep 5
+  sudo service gui restart
 else
   echo "-n flag specified. Not restarting openmower"
 fi
