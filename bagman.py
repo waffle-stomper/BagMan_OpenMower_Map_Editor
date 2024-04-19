@@ -151,23 +151,21 @@ class BagMan:
             os.path.splitext(file_name)[0].split("_")[-1]  # See file naming convention in docstring above
             for file_name in os.listdir(backups_dir)
         ]
-        if file_hash in existing_hashes:
-            self.log.info(f"This version of {file_path} has already been backed up (hash {file_hash})")
-            return
+        if file_hash not in existing_hashes:
+            # Make the backup
+            backup_file_path: str = os.path.join(
+                backups_dir,
+                "_".join([
+                    os.path.basename(file_path),
+                    datetime.datetime.utcnow().strftime("%Y-%m-%dT%H%M%S"),
+                    f"{file_hash}.zip"
+                ]),
+            )
+            self.log.info(f"Backing up {file_path} (hash {file_hash}) to {backup_file_path}")
+            with zipfile.ZipFile(backup_file_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zip_output:
+                zip_output.write(filename=file_path, arcname=os.path.basename(file_path))
 
-        # Make the backup
-        backup_file_path: str = os.path.join(
-            backups_dir,
-            "_".join([
-                os.path.basename(file_path),
-                datetime.datetime.utcnow().strftime("%Y-%m-%dT%H%M%S"),
-                f"{file_hash}.zip"
-            ]),
-        )
-        self.log.info(f"Backing up {file_path} (hash {file_hash}) to {backup_file_path}")
-        with zipfile.ZipFile(backup_file_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zip_output:
-            zip_output.write(filename=file_path, arcname=os.path.basename(file_path))
-
+        # Prune old backups to 30
         old_backups_to_remove: List[str] = sorted(os.listdir(backups_dir))[:-30]
         for old_backup in old_backups_to_remove:
             self.log.info(f"Pruning old backup {old_backup}")
