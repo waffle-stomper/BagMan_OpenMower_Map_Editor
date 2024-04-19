@@ -168,10 +168,10 @@ class BagMan:
         with zipfile.ZipFile(backup_file_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zip_output:
             zip_output.write(filename=file_path, arcname=os.path.basename(file_path))
 
-        old_backups_to_remove: List[str] = sorted(os.listdir(backups_dir), reverse=True)[30:]
+        old_backups_to_remove: List[str] = sorted(os.listdir(backups_dir))[:-30]
         for old_backup in old_backups_to_remove:
             self.log.info(f"Pruning old backup {old_backup}")
-            os.remove(old_backup)
+            os.remove(os.path.join(backups_dir, old_backup))
 
     def read_bag(self, file_path: str) -> List[rosbag.bag.BagMessage]:
         """
